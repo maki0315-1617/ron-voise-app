@@ -12,14 +12,14 @@ export default function App() {
   const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
   const restartTimerRef = useRef(null); 
-  const isListeningRef = useRef(false); // 💡Edgeの自動起動判定を100%正確にするためのフラグ
+  const isListeningRef = useRef(false); 
 
-  // 状態の変化を常に隠し変数に同期しておく（Edgeの遅延対策）
+  // 状態の変化を常に隠し変数に同期しておく
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // ⚡【ルールエリア①】：音声認識の準備
+  // ⚡【ルールエリア①】：音声認識の準備と自動マイク起動
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -32,16 +32,15 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
-    // ✅【固定】：[i][0].transcript の形を完全に固定し、未定義を徹底排除
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; 
+          finalized += event.results[i].transcript; 
         } else {
-          interim += event.results[i][0].transcript; 
+          interim += event.results[i].transcript; 
         }
       }
 
@@ -53,18 +52,15 @@ export default function App() {
       }
     };
 
-    // 💡【Edge自動復帰の強化】：Edgeのシステムが完全に静止するのを待ってから安全に叩き起こす
     rec.onend = () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
 
-      // ユーザーが手動で停止を押していない（まだONのまま勝手に切れた）場合
       if (isListeningRef.current) {
-        // Edgeの終了処理が完全に終わるよう「400ミリ秒」待ってからクリーンに再起動
         restartTimerRef.current = setTimeout(() => {
           if (isListeningRef.current && recognitionRef.current) {
             try {
               recognitionRef.current.start();
-              console.log("Edge/Chromeの音声認識を自動で安全に再起動しました");
+              console.log("音声認識を自動で安全に再起動しました");
             } catch (e) {
               console.error("再起動に失敗しました（稼働中の衝突）:", e);
             }
@@ -74,6 +70,17 @@ export default function App() {
     };
 
     recognitionRef.current = rec;
+
+    // 💡【追加機能】：サイトを開いた瞬間にマイクを使用可能状態として、自動起動を試みる
+    const initMic = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        toggleListening(); // マイクの許可が取れればそのまま自動で開始する
+      } catch (err) {
+        console.log("初回自動マイク起動のスキップ（またはブロック）:", err);
+      }
+    };
+    initMic();
 
     return () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
@@ -122,7 +129,7 @@ export default function App() {
 
   // ⚡【ルールエリア③】：ボタンが押されたときの動き
   const toggleListening = () => {
-    if (isListening) {
+    if (isListeningRef.current) {
       setIsListening(false);
       recognitionRef.current?.stop();
       stopVolumeMeter(); 
@@ -178,7 +185,8 @@ export default function App() {
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h1>💻 ロン君のリアルタイム会議文字起こし</h1>
+      {/* 💡タイトルを「ロン君の音声簡易文字起こし」に変更 */}
+      <h1>💻 ロン君の音声簡易文字起こし</h1>
       
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
         
