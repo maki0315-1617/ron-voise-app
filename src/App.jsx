@@ -11,12 +11,13 @@ export default function App() {
   const recognitionRef = useRef(null);
   const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
+  const restartTimerRef = useRef(null); // 💡【追加】Edgeの再起動タイマーを管理する箱
 
   // ⚡【ルールエリア①】：音声認識の準備
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("お使いのブラウザは音声認識に対応していません。Google Chrome等でお試しください。");
+      alert("お使いのブラウザは音声認識に対応していません。Google ChromeやEdgeでお試しください。");
       return;
     }
 
@@ -31,9 +32,9 @@ export default function App() {
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; 
+          finalized += event.results[i].transcript; 
         } else {
-          interim += event.results[i][0].transcript; 
+          interim += event.results[i].transcript; 
         }
       }
 
@@ -45,18 +46,33 @@ export default function App() {
       }
     };
 
+    // 💡【Edge対応の重要修正】：耳が閉じたら、確実に叩き起こすループを強化
     rec.onend = () => {
-      if (recognitionRef.current && isListening) {
-        try {
-          recognitionRef.current.start();
-          console.log("音声認識を自動で再スタートしました");
-        } catch (e) {
-          console.error("再起動に失敗しました:", e);
-        }
+      // すでに動いているタイマーがあれば一度クリアする
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+
+      // プログラマーが意図して停止ボタンを押したわけではない（まだON状態）なら再起動
+      if (isListening) {
+        // Edgeの通信が完全に切れるまで「0.1秒だけ待ってから」確実にスタートさせる
+        restartTimerRef.current = setTimeout(() => {
+          if (isListening && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+              console.log("Edge/Chromeの音声認識を自動再起動しました");
+            } catch (e) {
+              console.error("再起動に失敗（すでに動いている可能性があります）:", e);
+            }
+          }
+        }, 100); // 100ミリ秒の猶予を持たせる
       }
     };
 
     recognitionRef.current = rec;
+
+    // 画面が切り替わるときにタイマーを掃除する
+    return () => {
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    };
   }, [isListening]); 
 
   // ⚡【ルールエリア②】：マイクの音量をメーターに反映する仕組み
@@ -96,6 +112,7 @@ export default function App() {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (audioContextRef.current) audioContextRef.current.close();
     setMicVolume(0);
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current); // タイマーも止める
   };
 
   // ⚡【ルールエリア③】：ボタンが押されたときの動き
@@ -106,12 +123,14 @@ export default function App() {
       stopVolumeMeter(); 
     } else {
       setIsListening(true);
+      // 開始時はタイマーをクリアしてから耳を開く
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
       recognitionRef.current?.start();
       startVolumeMeter(); 
     }
   };
 
-  // ⚡【ルールエリア④】：💡【新機能】何月日と時間のファイル名でダウンロードするルール
+  // ⚡【ルールエリア④】：テキストファイルとしてダウンロードするルール
   const downloadTextFile = () => {
     const fullText = textHistory.join('\n');
 
@@ -120,15 +139,13 @@ export default function App() {
       return;
     }
 
-    // 現在の「年」「月」「日」「時」「分」を日本のカレンダーに合わせる
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth() + 1; // 月は0から始まるので1を足す
+    const month = now.getMonth() + 1; 
     const date = now.getDate();
     const hours = now.getHours();
     const minutes = now.getMinutes();
 
-    // 💡 1桁の数字（例: 7分）のときに「07分」と見やすく整えるおまじない
     const m = month < 10 ? '0' + month : month;
     const d = date < 10 ? '0' + date : date;
     const h = hours < 10 ? '0' + hours : hours;
@@ -139,8 +156,6 @@ export default function App() {
     const link = document.createElement('a');
     
     link.href = url;
-    
-    // 💡 ファイル名を「2026年07月30日_15時30分.txt」のような形にします
     link.download = year + "年" + m + "月" + d + "日_" + h + "時" + min + "分.txt"; 
 
     document.body.appendChild(link);
@@ -152,6 +167,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     };
   }, []);
 
