@@ -12,6 +12,12 @@ export default function App() {
   const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
   const restartTimerRef = useRef(null); 
+  const isListeningRef = useRef(false); // 💡Edgeの自動起動判定を100%正確にするためのフラグ
+
+  // 状態の変化を常に隠し変数に同期しておく（Edgeの遅延対策）
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
 
   // ⚡【ルールエリア①】：音声認識の準備
   useEffect(() => {
@@ -26,16 +32,16 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
-    // 💡【完全修正】：[i][0].transcript に確実に統一し、未定義エラーを永久に防ぎます
+    // ✅【固定】：[i][0].transcript の形を完全に固定し、未定義を徹底排除
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; // 👈 2次元配列に修正
+          finalized += event.results[i][0].transcript; 
         } else {
-          interim += event.results[i][0].transcript; // 👈 2次元配列に修正
+          interim += event.results[i][0].transcript; 
         }
       }
 
@@ -47,22 +53,23 @@ export default function App() {
       }
     };
 
-    // Edge/Chromeの無音停止を防ぐ強化ルール
+    // 💡【Edge自動復帰の強化】：Edgeのシステムが完全に静止するのを待ってから安全に叩き起こす
     rec.onend = () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
 
-      if (isListening) {
-        // 0.1秒だけ待ってから確実に再スタートさせる
+      // ユーザーが手動で停止を押していない（まだONのまま勝手に切れた）場合
+      if (isListeningRef.current) {
+        // Edgeの終了処理が完全に終わるよう「400ミリ秒」待ってからクリーンに再起動
         restartTimerRef.current = setTimeout(() => {
-          if (isListening && recognitionRef.current) {
+          if (isListeningRef.current && recognitionRef.current) {
             try {
               recognitionRef.current.start();
-              console.log("音声認識を自動再起動しました");
+              console.log("Edge/Chromeの音声認識を自動で安全に再起動しました");
             } catch (e) {
-              console.error("再起動に失敗しました（すでに稼働中など）:", e);
+              console.error("再起動に失敗しました（稼働中の衝突）:", e);
             }
           }
-        }, 100); 
+        }, 400); 
       }
     };
 
@@ -71,7 +78,7 @@ export default function App() {
     return () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     };
-  }, [isListening]); 
+  }, []); 
 
   // ⚡【ルールエリア②】：マイクの音量をメーターに反映する仕組み
   const startVolumeMeter = async () => {
