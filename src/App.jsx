@@ -7,7 +7,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false); 
   const [micVolume, setMicVolume] = useState(0); 
 
-  // 隠し変数（Ref）の準備
+  // 隠し変数の準備
   const recognitionRef = useRef(null);
   const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
@@ -111,9 +111,8 @@ export default function App() {
     }
   };
 
-  // ⚡【ルールエリア④】：💡【新機能】テキストファイルとしてダウンロードするルール
+  // ⚡【ルールエリア④】：【修正済】テキストファイルとしてダウンロードするルール
   const downloadTextFile = () => {
-    // 1. 溜まった文章の配列を、改行（\n）で1つの長い文章に繋ぎ合わせる
     const fullText = textHistory.join('\n');
 
     if (!fullText) {
@@ -121,23 +120,15 @@ export default function App() {
       return;
     }
 
-    // 2. ブラウザの中で「仮のテキストファイル（Blob）」を作る
     const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-
-    // 3. 画面に見えない透明な「ダウンロード用リンク」を1つ作る
     const link = document.createElement('a');
-    link.href = url;
     
-    // 4. ファイル名を決める（例：gijiroku_2026-07-30.txt のようになります）
-    const today = new Date().toISOString().split('T')[0];
-    link.download = `gijiroku_${today}.txt`;
+    link.href = url;
+    link.download = "gijiroku.txt"; // 最もシンプルな文字列指定に修正しました
 
-    // 5. リンクを自動で一瞬だけクリックさせて、ダウンロードを発動する
     document.body.appendChild(link);
     link.click();
-
-    // 6. 使い終わった後片付け
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -155,10 +146,8 @@ export default function App() {
       
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
         
-        {/* ボタンを横並びにするための枠 */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
           
-          {/* 開始・停止ボタン */}
           <button 
             onClick={toggleListening} 
             style={{
@@ -175,20 +164,19 @@ export default function App() {
             {isListening ? "⏹️ 会議の録音・文字起こしを停止" : "▶️ 会議の文字起こしを開始"}
           </button>
 
-          {/* 💡【追加】テキストダウンロードボタン */}
           <button 
             onClick={downloadTextFile}
-            disabled={textHistory.length === 0} // 文字がまだ1行もない時は押せない（灰色になる）
+            disabled={textHistory.length === 0} 
             style={{
               padding: '12px 24px',
               fontSize: '16px',
-              backgroundColor: '#52c41a', // 成功・保存をイメージする緑色
+              backgroundColor: '#52c41a', 
               color: 'white',
               border: 'none',
               borderRadius: '4px',
               cursor: textHistory.length === 0 ? 'not-allowed' : 'pointer',
               fontWeight: 'bold',
-              opacity: textHistory.length === 0 ? 0.5 : 1 // 押せない時は少し薄くする
+              opacity: textHistory.length === 0 ? 0.5 : 1 
             }}
           >
             📥 テキストをダウンロード
@@ -196,7 +184,6 @@ export default function App() {
 
         </div>
 
-        {/* マイク音量メーター */}
         {isListening && (
           <div style={{ width: '300px', textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#666' }}>🎤 マイク音量チェック: {micVolume}%</span>
@@ -207,7 +194,6 @@ export default function App() {
         )}
       </div>
 
-      {/* 文字起こし結果の表示スペース */}
       <div style={{ 
         marginTop: '30px', 
         padding: '20px', 
