@@ -32,15 +32,22 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
+    // 💡【絶対に未定義にならない修正】：[0]の代わりに .item(0) を使うことで、先祖返りやバグを永久に防ぎます
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalized += event.results[i].transcript; 
-        } else {
-          interim += event.results[i].transcript; 
+        const resultItem = event.results.item(i);
+        if (resultItem) {
+          const alternative = resultItem.item(0);
+          if (alternative) {
+            if (resultItem.isFinal) {
+              finalized += alternative.transcript;
+            } else {
+              interim += alternative.transcript;
+            }
+          }
         }
       }
 
@@ -71,11 +78,11 @@ export default function App() {
 
     recognitionRef.current = rec;
 
-    // 💡【追加機能】：サイトを開いた瞬間にマイクを使用可能状態として、自動起動を試みる
+    // サイトを開いた瞬間にマイクを使用可能状態として、自動起動を試みる
     const initMic = async () => {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
-        toggleListening(); // マイクの許可が取れればそのまま自動で開始する
+        toggleListening(); 
       } catch (err) {
         console.log("初回自動マイク起動のスキップ（またはブロック）:", err);
       }
@@ -185,7 +192,6 @@ export default function App() {
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      {/* 💡タイトルを「ロン君の音声簡易文字起こし」に変更 */}
       <h1>💻 ロン君の音声簡易文字起こし</h1>
       
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
