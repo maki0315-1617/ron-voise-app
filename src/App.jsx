@@ -5,11 +5,11 @@ export default function App() {
   const [textHistory, setTextHistory] = useState([]); 
   const [currentText, setCurrentText] = useState(""); 
   const [isListening, setIsListening] = useState(false); 
-  const [micVolume, setMicVolume] = useState(0); // 💡【追加】マイクの音量を記憶するメモ（0〜100）
+  const [micVolume, setMicVolume] = useState(0); 
 
   // 隠し変数（Ref）の準備
   const recognitionRef = useRef(null);
-  const audioContextRef = useRef(null); // 💡【追加】音の分析器を入れる箱
+  const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
 
   // ⚡【ルールエリア①】：音声認識の準備
@@ -25,15 +25,16 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
+    // 💡【修正ポイント】：[i][0].transcript に正確に書き換えました
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i].transcript; 
+          finalized += event.results[i][0].transcript; // 確定した文章（修正）
         } else {
-          interim += event.results[i].transcript; 
+          interim += event.results[i][0].transcript; // 途中の文章（修正）
         }
       }
 
@@ -59,13 +60,10 @@ export default function App() {
     recognitionRef.current = rec;
   }, [isListening]); 
 
-  // ⚡【ルールエリア②】：💡【追加】マイクの音量をメーターに反映する仕組み
+  // ⚡【ルールエリア②】：マイクの音量をメーターに反映する仕組み
   const startVolumeMeter = async () => {
     try {
-      // 1. マイクの生音を捕まえる
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // 2. 音を分析するシステム（AudioContext）を立ち上げる
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
@@ -77,14 +75,12 @@ export default function App() {
 
       audioContextRef.current = audioContext;
 
-      // 3. 画面の更新に合わせて、何度も音量を計算し直すループ処理
       const updateVolume = () => {
         analyser.getByteFrequencyData(dataArray);
         let total = 0;
         for (let i = 0; i < bufferLength; i++) {
           total += dataArray[i];
         }
-        // 平均値を計算して 0〜100 の数値に変換
         const average = total / bufferLength;
         setMicVolume(Math.min(100, Math.floor(average * 2))); 
 
@@ -97,27 +93,25 @@ export default function App() {
     }
   };
 
-  // 💡【追加】音量メーターを止める処理
   const stopVolumeMeter = () => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (audioContextRef.current) audioContextRef.current.close();
     setMicVolume(0);
   };
 
-  // ⚡【ルールエリア③】：ボタンが押されたときの動き（音量メーターと連動）
+  // ⚡【ルールエリア③】：ボタンが押されたときの動き
   const toggleListening = () => {
     if (isListening) {
       setIsListening(false);
       recognitionRef.current?.stop();
-      stopVolumeMeter(); // 💡音量メーターも止める
+      stopVolumeMeter(); 
     } else {
       setIsListening(true);
       recognitionRef.current?.start();
-      startVolumeMeter(); // 💡音量メーターも動かす
+      startVolumeMeter(); 
     }
   };
 
-  // アプリを閉じたときに音量の処理を完全に消去する（安全対策）
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -127,7 +121,7 @@ export default function App() {
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h1>💻 ロン君の文字起こし</h1>
+      <h1>💻 ロン君のリアルタイム会議文字起こし</h1>
       
       <div style={{ marginBottom: '20px' }}>
         <button 
@@ -148,7 +142,6 @@ export default function App() {
           {isListening ? "⏹️ 会議の録音・文字起こしを停止" : "▶️ 会議の文字起こしを開始"}
         </button>
 
-        {/* 💡【追加した見た目】マイク音量メーター */}
         {isListening && (
           <div style={{ maxWidth: '300px', margin: '0 auto', textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#666' }}>🎤 マイク音量チェック: {micVolume}%</span>
