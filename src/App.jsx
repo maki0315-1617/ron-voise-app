@@ -25,16 +25,15 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
-    // 💡【修正ポイント】：[i][0].transcript に正確に書き換えました
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; // 確定した文章（修正）
+          finalized += event.results[i].transcript; 
         } else {
-          interim += event.results[i][0].transcript; // 途中の文章（修正）
+          interim += event.results[i].transcript; 
         }
       }
 
@@ -112,6 +111,37 @@ export default function App() {
     }
   };
 
+  // ⚡【ルールエリア④】：💡【新機能】テキストファイルとしてダウンロードするルール
+  const downloadTextFile = () => {
+    // 1. 溜まった文章の配列を、改行（\n）で1つの長い文章に繋ぎ合わせる
+    const fullText = textHistory.join('\n');
+
+    if (!fullText) {
+      alert("ダウンロードする文字起こしテキストがありません。");
+      return;
+    }
+
+    // 2. ブラウザの中で「仮のテキストファイル（Blob）」を作る
+    const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    // 3. 画面に見えない透明な「ダウンロード用リンク」を1つ作る
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // 4. ファイル名を決める（例：gijiroku_2026-07-30.txt のようになります）
+    const today = new Date().toISOString().split('T')[0];
+    link.download = `gijiroku_${today}.txt`;
+
+    // 5. リンクを自動で一瞬だけクリックさせて、ダウンロードを発動する
+    document.body.appendChild(link);
+    link.click();
+
+    // 6. 使い終わった後片付け
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -123,27 +153,52 @@ export default function App() {
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <h1>💻 ロン君のリアルタイム会議文字起こし</h1>
       
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          onClick={toggleListening} 
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            backgroundColor: isListening ? '#ff4d4f' : '#1890ff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            display: 'block',
-            margin: '0 auto 15px auto'
-          }}
-        >
-          {isListening ? "⏹️ 会議の録音・文字起こしを停止" : "▶️ 会議の文字起こしを開始"}
-        </button>
+      <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+        
+        {/* ボタンを横並びにするための枠 */}
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          
+          {/* 開始・停止ボタン */}
+          <button 
+            onClick={toggleListening} 
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              backgroundColor: isListening ? '#ff4d4f' : '#1890ff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            {isListening ? "⏹️ 会議の録音・文字起こしを停止" : "▶️ 会議の文字起こしを開始"}
+          </button>
 
+          {/* 💡【追加】テキストダウンロードボタン */}
+          <button 
+            onClick={downloadTextFile}
+            disabled={textHistory.length === 0} // 文字がまだ1行もない時は押せない（灰色になる）
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              backgroundColor: '#52c41a', // 成功・保存をイメージする緑色
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: textHistory.length === 0 ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              opacity: textHistory.length === 0 ? 0.5 : 1 // 押せない時は少し薄くする
+            }}
+          >
+            📥 テキストをダウンロード
+          </button>
+
+        </div>
+
+        {/* マイク音量メーター */}
         {isListening && (
-          <div style={{ maxWidth: '300px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ width: '300px', textAlign: 'center' }}>
             <span style={{ fontSize: '12px', color: '#666' }}>🎤 マイク音量チェック: {micVolume}%</span>
             <div style={{ width: '100%', height: '10px', backgroundColor: '#e8e8e8', borderRadius: '5px', marginTop: '5px', overflow: 'hidden' }}>
               <div style={{ width: `${micVolume}%`, height: '100%', backgroundColor: micVolume > 50 ? '#ff4d4f' : '#52c41a', transition: 'width 0.1s ease' }} />
@@ -152,6 +207,7 @@ export default function App() {
         )}
       </div>
 
+      {/* 文字起こし結果の表示スペース */}
       <div style={{ 
         marginTop: '30px', 
         padding: '20px', 
@@ -184,4 +240,3 @@ export default function App() {
       </div>
     </div>
   );
-}
