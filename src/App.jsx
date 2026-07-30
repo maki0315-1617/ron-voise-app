@@ -13,13 +13,21 @@ export default function App() {
   const animationFrameRef = useRef(null);
   const restartTimerRef = useRef(null); 
   const isListeningRef = useRef(false); 
+  const scrollContainerRef = useRef(null); 
 
   // 状態の変化を常に隠し変数に同期しておく
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // ⚡【ルールエリア①】：音声認識の準備（※サイトアクセス時の自動起動ルールは消去しました）
+  // 新しい文字が追加されたら、テキストエリアを自動で一番下までスクロールさせるルール
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [textHistory, currentText]);
+
+  // ⚡【ルールエリア①】：音声認識の準備
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -137,7 +145,15 @@ export default function App() {
     }
   };
 
-  // ⚡【ルールエリア④】：テキストファイルとしてダウンロードするルール
+  // ⚡【ルールエリア④】：文字起こしクリアのルール
+  const clearTextHistory = () => {
+    if (window.confirm("文字起こしされたテキストをすべて消去してもよろしいですか？")) {
+      setTextHistory([]);
+      setCurrentText("");
+    }
+  };
+
+  // ⚡【ルールエリア⑤】：テキストファイルとしてダウンロードするルール
   const downloadTextFile = () => {
     const fullText = textHistory.join('\n');
 
@@ -177,97 +193,131 @@ export default function App() {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     };
   }, []);
-
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
-    <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '20px 15px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
       
-      {/* 💡【変更】：PC絵文字を public/ron.png の画像表示に修正（横幅40pxで文字の高さに綺麗に揃うよう調整しています） */}
-      <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-        <img src="/ron.png" alt="Ron" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-        ロン君の音声簡易文字起こし
-      </h1>
-      
-      <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+      <div style={{ flex: 1 }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '24px', margin: '10px 0 20px 0', textAlign: 'center' }}>
+          <img src="/ron.png" alt="Ron" style={{ width: '35px', height: '35px', objectFit: 'contain' }} />
+          ロン君の音声簡易文字起こし
+        </h1>
         
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
           
-          <button 
-            onClick={toggleListening} 
-            style={{
-              padding: '12px 24px',
-              fontSize: '16px',
-              backgroundColor: isListening ? '#ff4d4f' : '#1890ff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            {isListening ? "⏹️ 会議の録音・文字起こしを停止" : "▶️ 会議の文字起こしを開始"}
-          </button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', width: '100%' }}>
+            
+            <button 
+              onClick={toggleListening} 
+              style={{
+                padding: '12px 20px',
+                fontSize: '15px',
+                backgroundColor: isListening ? '#ff4d4f' : '#1890ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                flex: '1 1 auto', 
+                minWidth: '140px'
+              }}
+            >
+              {isListening ? "⏹️ 停止" : "▶️ 開始"}
+            </button>
 
-          <button 
-            onClick={downloadTextFile}
-            disabled={textHistory.length === 0} 
-            style={{
-              padding: '12px 24px',
-              fontSize: '16px',
-              backgroundColor: '#52c41a', 
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: textHistory.length === 0 ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold',
-              opacity: textHistory.length === 0 ? 0.5 : 1 
-            }}
-          >
-            📥 テキストをダウンロード
-          </button>
+            <button 
+              onClick={downloadTextFile}
+              disabled={textHistory.length === 0} 
+              style={{
+                padding: '12px 24px',
+                fontSize: '15px',
+                backgroundColor: '#52c41a', 
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: textHistory.length === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                opacity: textHistory.length === 0 ? 0.5 : 1,
+                flex: '1 1 auto',
+                minWidth: '140px'
+              }}
+            >
+              📥 保存
+            </button>
 
+            <button 
+              onClick={clearTextHistory}
+              disabled={textHistory.length === 0 && !currentText} 
+              style={{
+                padding: '12px 24px',
+                fontSize: '15px',
+                backgroundColor: '#faad14', 
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: (textHistory.length === 0 && !currentText) ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                opacity: (textHistory.length === 0 && !currentText) ? 0.5 : 1,
+                flex: '1 1 auto',
+                minWidth: '140px'
+              }}
+            >
+              🗑️ クリア
+            </button>
+
+          </div>
+
+          {isListening && (
+            <div style={{ width: '100%', maxWidth: '300px', textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#666' }}>🎤 マイク音量チェック: {micVolume}%</span>
+              <div style={{ width: '100%', height: '10px', backgroundColor: '#e8e8e8', borderRadius: '5px', marginTop: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${micVolume}%`, height: '100%', backgroundColor: micVolume > 50 ? '#ff4d4f' : '#52c41a', transition: 'width 0.1s ease' }} />
+              </div>
+            </div>
+          )}
         </div>
 
-        {isListening && (
-          <div style={{ width: '300px', textAlign: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#666' }}>🎤 マイク音量チェック: {micVolume}%</span>
-            <div style={{ width: '100%', height: '10px', backgroundColor: '#e8e8e8', borderRadius: '5px', marginTop: '5px', overflow: 'hidden' }}>
-              <div style={{ width: `${micVolume}%`, height: '100%', backgroundColor: micVolume > 50 ? '#ff4d4f' : '#52c41a', transition: 'width 0.1s ease' }} />
-            </div>
-          </div>
-        )}
-      </div>
+        <div 
+          ref={scrollContainerRef}
+          style={{ 
+            marginTop: '20px', 
+            padding: '15px', 
+            border: '2px solid #e8e8e8', 
+            borderRadius: '8px',
+            backgroundColor: '#fafafa',
+            height: '350px', 
+            overflowY: 'auto', 
+            textAlign: 'left',
+            lineHeight: '1.6',
+            boxSizing: 'border-box'
+          }}
+        >
+          {textHistory.map((sentence, index) => {
+            return (
+              <p key={index} style={{ margin: '0 0 10px 0', color: '#333', fontSize: '15px', wordBreak: 'break-all' }}>
+                {sentence}
+              </p>
+            );
+          })}
 
-      <div style={{ 
-        marginTop: '30px', 
-        padding: '20px', 
-        border: '2px solid #e8e8e8', 
-        borderRadius: '8px',
-        backgroundColor: '#fafafa',
-        minHeight: '200px',
-        textAlign: 'left',
-        lineHeight: '1.6'
-      }}>
-        {textHistory.map((sentence, index) => {
-          return (
-            <p key={index} style={{ margin: '0 0 10px 0', color: '#333' }}>
-              {sentence}
+          {currentText && (
+            <p style={{ margin: 0, color: '#999', fontStyle: 'italic', fontSize: '15px', wordBreak: 'break-all' }}>
+              {currentText} ...
             </p>
-          );
-        })}
+          )}
 
-        {currentText && (
-          <p style={{ margin: 0, color: '#999', fontStyle: 'italic' }}>
-            {currentText} ...
-          </p>
-        )}
-
-        {textHistory.length === 0 && !currentText && (
-          <p style={{ color: '#aaa', textAlign: 'center', marginTop: '80px' }}>
-            開始ボタンを押してマイクに向かって話すと、ここにリアルタイムに文字が表示されます。
-          </p>
-        )}
+          {textHistory.length === 0 && !currentText && (
+            <p style={{ color: '#aaa', textAlign: 'center', marginTop: '130px', fontSize: '14px' }}>
+              開始ボタンを押してマイクに向かって話すと、ここにリアルタイムに文字が表示されます。
+            </p>
+          )}
+        </div>
       </div>
+
+      <footer style={{ textAlign: 'center', padding: '20px 0 10px 0', fontSize: '13px', color: '#888', borderTop: '1px solid #eee', marginTop: '20px' }}>
+        <p>&copy; {new Date().getFullYear()} ron. All rights reserved.</p>
+      </footer>
+
     </div>
   );
 }
