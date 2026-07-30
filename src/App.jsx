@@ -25,15 +25,16 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
+    // 💡【重要修正】：データの箱を [i][0].transcript に戻して「未定義」を解決しました
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i].transcript; 
+          finalized += event.results[i][0].transcript; // 👈 [0] を追加して修正
         } else {
-          interim += event.results[i].transcript; 
+          interim += event.results[i][0].transcript; // 👈 [0] を追加して修正
         }
       }
 
@@ -226,4 +227,4 @@ export default function App() {
       </div>
     </div>
   );
-} // 👈 ここを確実に閉じました！
+}
