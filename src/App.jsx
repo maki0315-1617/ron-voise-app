@@ -70,7 +70,7 @@ export default function App() {
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h1>💻 ロン君のリアルタイム会議文字起こし</h1>
+      <h1>💻 ロン君の文字起こしサイト</h1>
       
       <button 
         onClick={toggleListening} 
