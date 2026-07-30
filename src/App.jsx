@@ -19,7 +19,7 @@ export default function App() {
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // ⚡【ルールエリア①】：音声認識の準備と自動マイク起動
+  // ⚡【ルールエリア①】：音声認識の準備（※サイトアクセス時の自動起動ルールは消去しました）
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -32,7 +32,7 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
-    // 💡【絶対に未定義にならない修正】：[0]の代わりに .item(0) を使うことで、先祖返りやバグを永久に防ぎます
+    // ✅【先祖返り完全防止】：.item(0) 構文を完全に維持し、未定義エラーを永久に防ぎます
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
@@ -77,17 +77,6 @@ export default function App() {
     };
 
     recognitionRef.current = rec;
-
-    // サイトを開いた瞬間にマイクを使用可能状態として、自動起動を試みる
-    const initMic = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        toggleListening(); 
-      } catch (err) {
-        console.log("初回自動マイク起動のスキップ（またはブロック）:", err);
-      }
-    };
-    initMic();
 
     return () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
@@ -192,7 +181,12 @@ export default function App() {
   // 🎨【見た目エリア】：HTMLの組み立て
   return (
     <div style={{ padding: '40px', maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h1>💻 ロン君の音声簡易文字起こし</h1>
+      
+      {/* 💡【変更】：PC絵文字を public/ron.png の画像表示に修正（横幅40pxで文字の高さに綺麗に揃うよう調整しています） */}
+      <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <img src="/ron.png" alt="Ron" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+        ロン君の音声簡易文字起こし
+      </h1>
       
       <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
         
