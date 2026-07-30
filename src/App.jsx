@@ -28,9 +28,9 @@ export default function App() {
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; 
+          finalized += event.results[i].transcript; 
         } else {
-          interim += event.results[i][0].transcript; 
+          interim += event.results[i].transcript; 
         }
       }
 
@@ -122,3 +122,4 @@ export default function App() {
       </div>
     </div>
   );
+}
