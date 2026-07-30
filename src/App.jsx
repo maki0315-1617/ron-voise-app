@@ -11,7 +11,7 @@ export default function App() {
   const recognitionRef = useRef(null);
   const audioContextRef = useRef(null); 
   const animationFrameRef = useRef(null);
-  const restartTimerRef = useRef(null); // 💡【追加】Edgeの再起動タイマーを管理する箱
+  const restartTimerRef = useRef(null); 
 
   // ⚡【ルールエリア①】：音声認識の準備
   useEffect(() => {
@@ -26,15 +26,16 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
+    // 💡【完全修正】：[i][0].transcript に確実に統一し、未定義エラーを永久に防ぎます
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i].transcript; 
+          finalized += event.results[i][0].transcript; // 👈 2次元配列に修正
         } else {
-          interim += event.results[i].transcript; 
+          interim += event.results[i][0].transcript; // 👈 2次元配列に修正
         }
       }
 
@@ -46,30 +47,27 @@ export default function App() {
       }
     };
 
-    // 💡【Edge対応の重要修正】：耳が閉じたら、確実に叩き起こすループを強化
+    // Edge/Chromeの無音停止を防ぐ強化ルール
     rec.onend = () => {
-      // すでに動いているタイマーがあれば一度クリアする
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
 
-      // プログラマーが意図して停止ボタンを押したわけではない（まだON状態）なら再起動
       if (isListening) {
-        // Edgeの通信が完全に切れるまで「0.1秒だけ待ってから」確実にスタートさせる
+        // 0.1秒だけ待ってから確実に再スタートさせる
         restartTimerRef.current = setTimeout(() => {
           if (isListening && recognitionRef.current) {
             try {
               recognitionRef.current.start();
-              console.log("Edge/Chromeの音声認識を自動再起動しました");
+              console.log("音声認識を自動再起動しました");
             } catch (e) {
-              console.error("再起動に失敗（すでに動いている可能性があります）:", e);
+              console.error("再起動に失敗しました（すでに稼働中など）:", e);
             }
           }
-        }, 100); // 100ミリ秒の猶予を持たせる
+        }, 100); 
       }
     };
 
     recognitionRef.current = rec;
 
-    // 画面が切り替わるときにタイマーを掃除する
     return () => {
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     };
@@ -112,7 +110,7 @@ export default function App() {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (audioContextRef.current) audioContextRef.current.close();
     setMicVolume(0);
-    if (restartTimerRef.current) clearTimeout(restartTimerRef.current); // タイマーも止める
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current); 
   };
 
   // ⚡【ルールエリア③】：ボタンが押されたときの動き
@@ -123,7 +121,6 @@ export default function App() {
       stopVolumeMeter(); 
     } else {
       setIsListening(true);
-      // 開始時はタイマーをクリアしてから耳を開く
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
       recognitionRef.current?.start();
       startVolumeMeter(); 
