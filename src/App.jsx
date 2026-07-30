@@ -88,7 +88,7 @@ export default function App() {
 
       updateVolume();
     } catch (err) {
-      console.error("マイク音量の取得に失敗:", err);
+      console.error("マイク音量を処理できませんでした:", err);
     }
   };
 
@@ -111,7 +111,7 @@ export default function App() {
     }
   };
 
-  // ⚡【ルールエリア④】：【修正済】テキストファイルとしてダウンロードするルール
+  // ⚡【ルールエリア④】：テキストファイルとしてダウンロードするルール
   const downloadTextFile = () => {
     const fullText = textHistory.join('\n');
 
@@ -125,7 +125,7 @@ export default function App() {
     const link = document.createElement('a');
     
     link.href = url;
-    link.download = "gijiroku.txt"; // 最もシンプルな文字列指定に修正しました
+    link.download = "gijiroku.txt"; 
 
     document.body.appendChild(link);
     link.click();
@@ -226,3 +226,4 @@ export default function App() {
       </div>
     </div>
   );
+} // 👈 ここを確実に閉じました！
