@@ -25,16 +25,15 @@ export default function App() {
     rec.continuous = true;     
     rec.interimResults = true; 
 
-    // 💡【重要修正】：データの箱を [i][0].transcript に戻して「未定義」を解決しました
     rec.onresult = (event) => {
       let interim = ""; 
       let finalized = ""; 
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalized += event.results[i][0].transcript; // 👈 [0] を追加して修正
+          finalized += event.results[i][0].transcript; 
         } else {
-          interim += event.results[i][0].transcript; // 👈 [0] を追加して修正
+          interim += event.results[i][0].transcript; 
         }
       }
 
@@ -112,7 +111,7 @@ export default function App() {
     }
   };
 
-  // ⚡【ルールエリア④】：テキストファイルとしてダウンロードするルール
+  // ⚡【ルールエリア④】：💡【新機能】何月日と時間のファイル名でダウンロードするルール
   const downloadTextFile = () => {
     const fullText = textHistory.join('\n');
 
@@ -121,12 +120,28 @@ export default function App() {
       return;
     }
 
+    // 現在の「年」「月」「日」「時」「分」を日本のカレンダーに合わせる
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 月は0から始まるので1を足す
+    const date = now.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    // 💡 1桁の数字（例: 7分）のときに「07分」と見やすく整えるおまじない
+    const m = month < 10 ? '0' + month : month;
+    const d = date < 10 ? '0' + date : date;
+    const h = hours < 10 ? '0' + hours : hours;
+    const min = minutes < 10 ? '0' + minutes : minutes;
+
     const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     
     link.href = url;
-    link.download = "gijiroku.txt"; 
+    
+    // 💡 ファイル名を「2026年07月30日_15時30分.txt」のような形にします
+    link.download = year + "年" + m + "月" + d + "日_" + h + "時" + min + "分.txt"; 
 
     document.body.appendChild(link);
     link.click();
